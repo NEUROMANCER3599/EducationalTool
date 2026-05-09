@@ -4,6 +4,7 @@ using TMPro;
 using System;
 using System.Collections.Generic;
 using UnityEngine.Serialization;
+using System.Collections;
 
 public class TimerController : MonoBehaviour
 {
@@ -37,6 +38,8 @@ public class TimerController : MonoBehaviour
 
     [Header("SFX")]
     public AudioClip TimesUpSFX;
+    public AudioClip TickSFX;
+    public EffectBehaviour TimesUpFX;
 
 
     // ตัวแปรสำหรับควบคุม Logic
@@ -53,6 +56,7 @@ public class TimerController : MonoBehaviour
     private const int MAX_VALUE = 59;
     private const int MAX_HOUR = 99;
 
+    private Coroutine TickingCoroutine;
     void Start()
     {
         // ตั้งค่า Image component และ Sprite เริ่มต้น
@@ -83,6 +87,8 @@ public class TimerController : MonoBehaviour
                 isRunning = false;
 
                 AudioManager.Instance.PlaySfx(TimesUpSFX, 1f);
+                TimesUpFX.PlayFX();
+                ResetTimer();
                 Debug.Log("Countdown Finished! Holding End Animation.");
                 
                 // 1. Animation: สั่งไปที่ End และค้างไว้
@@ -169,7 +175,8 @@ public class TimerController : MonoBehaviour
         // 3. Start Logic:
         isRunning = true;
         buttonImage.sprite = pauseSprite;
-        
+        TickingCoroutine = StartCoroutine(clockticking());
+
         // 4. ควบคุม Animator ให้กลับไป Loop
         if (animator != null)
         {
@@ -179,6 +186,7 @@ public class TimerController : MonoBehaviour
         }
 
         AudioManager.Instance.StopAllSound();
+        
         return; 
     }
     
@@ -199,9 +207,10 @@ public class TimerController : MonoBehaviour
         SetInitialTime();
         isRunning = true;
         buttonImage.sprite = pauseSprite;
-        
-        // ควบคุม Animator ให้เป็น Loop
-        if(animator != null)
+        TickingCoroutine = StartCoroutine(clockticking());
+
+            // ควบคุม Animator ให้เป็น Loop
+        if (animator != null)
         {
             animator.SetBool("Idle", false);
             animator.SetBool("Loop", true);
@@ -236,6 +245,16 @@ public class TimerController : MonoBehaviour
 
     }
 
+    IEnumerator clockticking()
+    {
+        yield return new WaitForSeconds(1f);
+
+        AudioManager.Instance.PlaySfx(TickSFX,0.75f);
+
+        if(TickingCoroutine != null)
+            TickingCoroutine = StartCoroutine(clockticking());
+    }
+
     // ----------------------------------------------------------------------
     // ฟังก์ชันสำหรับรีเซ็ต (เชื่อมต่อกับปุ่ม Reset)
     // ----------------------------------------------------------------------
@@ -247,7 +266,13 @@ public class TimerController : MonoBehaviour
         hoursSet = 0;
         minutesSet = 0;
         secondsSet = 0;
-        
+
+        if (TickingCoroutine != null)
+        {
+            StopCoroutine(TickingCoroutine);
+            TickingCoroutine = null;
+        }
+
         UpdateSettingDisplay(); 
         SetMode(true); // กลับไปสู่โหมดตั้งค่า (และเปลี่ยน Animation เป็น Idle)
         
@@ -311,7 +336,13 @@ public class TimerController : MonoBehaviour
         }
         else
         {
-            countdownDisplay.text = "00:00:00"; 
+            countdownDisplay.text = "00:00:00";
+
+            if(TickingCoroutine != null)
+            {
+                StopCoroutine(TickingCoroutine);
+                TickingCoroutine = null;
+            }
         }
     }
 
